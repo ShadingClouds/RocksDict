@@ -1,22 +1,22 @@
+import gc
+import os
+import platform
+import sys
 import unittest
+from json import dumps, loads
+from random import getrandbits, randint, random
+
 from rocksdict import (
     AccessType,
-    Rdict,
-    Options,
-    PlainTableFactoryOptions,
-    SliceTransform,
+    Checkpoint,
     CuckooTableOptions,
     DbClosedError,
+    Options,
+    PlainTableFactoryOptions,
+    Rdict,
+    SliceTransform,
     WriteBatch,
-    Checkpoint
 )
-from random import randint, random, getrandbits
-import os
-import gc
-import sys
-import platform
-from json import loads, dumps
-
 
 TEST_INT_RANGE_UPPER = 999999
 
@@ -43,7 +43,14 @@ class TestGetDel(unittest.TestCase):
         cls.test_dict["a"] = "a"
         cls.test_dict[123] = 123
 
-    @unittest.skipIf(platform.python_implementation() == "PyPy", reason="sys.getrefcount() not available in PyPy")
+    @unittest.skipIf(
+        platform.python_implementation() == "PyPy",
+        reason="sys.getrefcount() not available in PyPy",
+    )
+    @unittest.skipIf(
+        sys.version_info >= (3, 14),
+        reason="Python 3.14 refcount can be differently optimized",
+    )
     def testGetItem(self):
         assert self.test_dict is not None
         self.assertEqual(self.test_dict["a"], "a")
@@ -52,8 +59,14 @@ class TestGetDel(unittest.TestCase):
         self.assertIsNone(self.test_dict.get(250))
         self.assertEqual(self.test_dict.get("b", "b"), "b")
         self.assertEqual(self.test_dict.get(250, 1324123), 1324123)
-        self.assertRaises(KeyError, lambda: self.test_dict["b"] if self.test_dict is not None else None)
-        self.assertRaises(KeyError, lambda: self.test_dict[250] if self.test_dict is not None else None)
+        self.assertRaises(
+            KeyError,
+            lambda: self.test_dict["b"] if self.test_dict is not None else None,
+        )
+        self.assertRaises(
+            KeyError,
+            lambda: self.test_dict[250] if self.test_dict is not None else None,
+        )
 
     def testDelItem(self):
         assert self.test_dict is not None
@@ -94,8 +107,14 @@ class TestGetDelCustomDumpsLoads(unittest.TestCase):
         self.assertEqual(self.test_dict.get("b", "b"), "b")
         self.assertEqual(self.test_dict.get(250, 1324123), 1324123)
         self.assertEqual(self.test_dict["ok"], ["o", "k"])
-        self.assertRaises(KeyError, lambda: self.test_dict["b"] if self.test_dict is not None else None)
-        self.assertRaises(KeyError, lambda: self.test_dict[250] if self.test_dict is not None else None)
+        self.assertRaises(
+            KeyError,
+            lambda: self.test_dict["b"] if self.test_dict is not None else None,
+        )
+        self.assertRaises(
+            KeyError,
+            lambda: self.test_dict[250] if self.test_dict is not None else None,
+        )
 
     def testDelItem(self):
         assert self.test_dict is not None
@@ -309,7 +328,10 @@ class TestInt(unittest.TestCase):
         assert self.test_dict is not None
         self.test_dict.close()
 
-        self.assertRaises(DbClosedError, lambda: self.test_dict.get(1) if self.test_dict is not None else None)
+        self.assertRaises(
+            DbClosedError,
+            lambda: self.test_dict.get(1) if self.test_dict is not None else None,
+        )
 
         gc.collect()
         test_dict = Rdict(self.path, self.opt)
@@ -453,7 +475,14 @@ class TestBytes(unittest.TestCase):
         cls.test_dict = Rdict(cls.path, cls.opt)
         cls.ref_dict = dict()
 
-    @unittest.skipIf(platform.python_implementation() == "PyPy", reason="sys.getrefcount() not available in PyPy")
+    @unittest.skipIf(
+        platform.python_implementation() == "PyPy",
+        reason="sys.getrefcount() not available in PyPy",
+    )
+    @unittest.skipIf(
+        sys.version_info >= (3, 14),
+        reason="Python 3.14 refcount can be differently optimized",
+    )
     def test_add_bytes(self):
         assert self.test_dict is not None
         assert self.ref_dict is not None
@@ -472,7 +501,14 @@ class TestBytes(unittest.TestCase):
 
         compare_dicts(self, self.ref_dict, self.test_dict)
 
-    @unittest.skipIf(platform.python_implementation() == "PyPy", reason="sys.getrefcount() not available in PyPy")
+    @unittest.skipIf(
+        platform.python_implementation() == "PyPy",
+        reason="sys.getrefcount() not available in PyPy",
+    )
+    @unittest.skipIf(
+        sys.version_info >= (3, 14),
+        reason="Python 3.14 refcount can be differently optimized",
+    )
     def test_delete_bytes(self):
         assert self.test_dict is not None
         assert self.ref_dict is not None
@@ -567,23 +603,47 @@ class TestWideColumnsRaw(unittest.TestCase):
 
     def test_put_wide_columns(self):
         assert self.test_dict is not None
-        self.test_dict.put_entity(key=b"Guangdong", names=[b"language", b"city"], values=[b"Cantonese", b"Shenzhen"])
-        self.test_dict.put_entity(key=b"Sichuan", names=[b"language", b"city"], values=[b"Mandarin", b"Chengdu"])
+        self.test_dict.put_entity(
+            key=b"Guangdong",
+            names=[b"language", b"city"],
+            values=[b"Cantonese", b"Shenzhen"],
+        )
+        self.test_dict.put_entity(
+            key=b"Sichuan",
+            names=[b"language", b"city"],
+            values=[b"Mandarin", b"Chengdu"],
+        )
         self.assertEqual(self.test_dict[b"Guangdong"], b"")
-        self.assertEqual(self.test_dict.get_entity(b"Guangdong"), [(b"city", b"Shenzhen"), (b"language", b"Cantonese")])
+        self.assertEqual(
+            self.test_dict.get_entity(b"Guangdong"),
+            [(b"city", b"Shenzhen"), (b"language", b"Cantonese")],
+        )
         self.assertEqual(self.test_dict[b"Sichuan"], b"")
-        self.assertEqual(self.test_dict.get_entity(b"Sichuan"), [(b"city", b"Chengdu"), (b"language", b"Mandarin")])
+        self.assertEqual(
+            self.test_dict.get_entity(b"Sichuan"),
+            [(b"city", b"Chengdu"), (b"language", b"Mandarin")],
+        )
         # overwrite
-        self.test_dict.put_entity(key=b"Sichuan", names=[b"language", b"city"], values=[b"Sichuanhua", b"Chengdu"])
+        self.test_dict.put_entity(
+            key=b"Sichuan",
+            names=[b"language", b"city"],
+            values=[b"Sichuanhua", b"Chengdu"],
+        )
         self.test_dict[b"Beijing"] = b"Beijing"
 
         # assertions
         self.assertEqual(self.test_dict[b"Beijing"], b"Beijing")
         self.assertEqual(self.test_dict.get_entity(b"Beijing"), [(b"", b"Beijing")])
         self.assertEqual(self.test_dict[b"Guangdong"], b"")
-        self.assertEqual(self.test_dict.get_entity(b"Guangdong"), [(b"city", b"Shenzhen"), (b"language", b"Cantonese")])
+        self.assertEqual(
+            self.test_dict.get_entity(b"Guangdong"),
+            [(b"city", b"Shenzhen"), (b"language", b"Cantonese")],
+        )
         self.assertEqual(self.test_dict[b"Sichuan"], b"")
-        self.assertEqual(self.test_dict.get_entity(b"Sichuan"), [(b"city", b"Chengdu"), (b"language", b"Sichuanhua")])
+        self.assertEqual(
+            self.test_dict.get_entity(b"Sichuan"),
+            [(b"city", b"Chengdu"), (b"language", b"Sichuanhua")],
+        )
 
         # iterator
         it = self.test_dict.iter()
@@ -596,12 +656,16 @@ class TestWideColumnsRaw(unittest.TestCase):
         self.assertTrue(it.valid())
         self.assertEqual(it.key(), b"Guangdong")
         self.assertEqual(it.value(), b"")
-        self.assertEqual(it.columns(), [(b"city", b"Shenzhen"), (b"language", b"Cantonese")])
+        self.assertEqual(
+            it.columns(), [(b"city", b"Shenzhen"), (b"language", b"Cantonese")]
+        )
         it.next()
         self.assertTrue(it.valid())
         self.assertEqual(it.key(), b"Sichuan")
         self.assertEqual(it.value(), b"")
-        self.assertEqual(it.columns(), [(b"city", b"Chengdu"), (b"language", b"Sichuanhua")])
+        self.assertEqual(
+            it.columns(), [(b"city", b"Chengdu"), (b"language", b"Sichuanhua")]
+        )
 
         # iterators
         expected = [
@@ -619,7 +683,7 @@ class TestWideColumnsRaw(unittest.TestCase):
                 [(b"", b"Beijing")],
                 [(b"city", b"Shenzhen"), (b"language", b"Cantonese")],
                 [(b"city", b"Chengdu"), (b"language", b"Sichuanhua")],
-            ]
+            ],
         )
 
     @classmethod
@@ -647,10 +711,22 @@ class TestWriteBatchWideColumnsRaw(unittest.TestCase):
         write_batch = WriteBatch(raw_mode=True)
         default_cf_handle = self.test_dict.get_column_family_handle("default")
         write_batch.set_default_column_family(default_cf_handle)
-        write_batch.put_entity(key=b"Guangdong", names=[b"language", b"city"], values=[b"Cantonese", b"Shenzhen"])
-        write_batch.put_entity(key=b"Sichuan", names=[b"language", b"city"], values=[b"Mandarin", b"Chengdu"])
+        write_batch.put_entity(
+            key=b"Guangdong",
+            names=[b"language", b"city"],
+            values=[b"Cantonese", b"Shenzhen"],
+        )
+        write_batch.put_entity(
+            key=b"Sichuan",
+            names=[b"language", b"city"],
+            values=[b"Mandarin", b"Chengdu"],
+        )
         # overwrite
-        write_batch.put_entity(key=b"Sichuan", names=[b"language", b"city"], values=[b"Sichuanhua", b"Chengdu"])
+        write_batch.put_entity(
+            key=b"Sichuan",
+            names=[b"language", b"city"],
+            values=[b"Sichuanhua", b"Chengdu"],
+        )
         write_batch[b"Beijing"] = b"Beijing"
 
         self.test_dict.write(write_batch)
@@ -659,9 +735,15 @@ class TestWriteBatchWideColumnsRaw(unittest.TestCase):
         self.assertEqual(self.test_dict[b"Beijing"], b"Beijing")
         self.assertEqual(self.test_dict.get_entity(b"Beijing"), [(b"", b"Beijing")])
         self.assertEqual(self.test_dict[b"Guangdong"], b"")
-        self.assertEqual(self.test_dict.get_entity(b"Guangdong"), [(b"city", b"Shenzhen"), (b"language", b"Cantonese")])
+        self.assertEqual(
+            self.test_dict.get_entity(b"Guangdong"),
+            [(b"city", b"Shenzhen"), (b"language", b"Cantonese")],
+        )
         self.assertEqual(self.test_dict[b"Sichuan"], b"")
-        self.assertEqual(self.test_dict.get_entity(b"Sichuan"), [(b"city", b"Chengdu"), (b"language", b"Sichuanhua")])
+        self.assertEqual(
+            self.test_dict.get_entity(b"Sichuan"),
+            [(b"city", b"Chengdu"), (b"language", b"Sichuanhua")],
+        )
 
         # iterator
         it = self.test_dict.iter()
@@ -674,12 +756,16 @@ class TestWriteBatchWideColumnsRaw(unittest.TestCase):
         self.assertTrue(it.valid())
         self.assertEqual(it.key(), b"Guangdong")
         self.assertEqual(it.value(), b"")
-        self.assertEqual(it.columns(), [(b"city", b"Shenzhen"), (b"language", b"Cantonese")])
+        self.assertEqual(
+            it.columns(), [(b"city", b"Shenzhen"), (b"language", b"Cantonese")]
+        )
         it.next()
         self.assertTrue(it.valid())
         self.assertEqual(it.key(), b"Sichuan")
         self.assertEqual(it.value(), b"")
-        self.assertEqual(it.columns(), [(b"city", b"Chengdu"), (b"language", b"Sichuanhua")])
+        self.assertEqual(
+            it.columns(), [(b"city", b"Chengdu"), (b"language", b"Sichuanhua")]
+        )
 
         # iterators
         expected = [
@@ -697,7 +783,7 @@ class TestWriteBatchWideColumnsRaw(unittest.TestCase):
                 [(b"", b"Beijing")],
                 [(b"city", b"Shenzhen"), (b"language", b"Cantonese")],
                 [(b"city", b"Chengdu"), (b"language", b"Sichuanhua")],
-            ]
+            ],
         )
 
         del write_batch
@@ -724,23 +810,43 @@ class TestWideColumns(unittest.TestCase):
 
     def test_put_wide_columns(self):
         assert self.test_dict is not None
-        self.test_dict.put_entity(key="Guangdong", names=["language", "city", "population"], values=["Cantonese", "Shenzhen", 1.27])
-        self.test_dict.put_entity(key="Sichuan", names=["language", "city"], values=["Mandarin", "Chengdu"])
+        self.test_dict.put_entity(
+            key="Guangdong",
+            names=["language", "city", "population"],
+            values=["Cantonese", "Shenzhen", 1.27],
+        )
+        self.test_dict.put_entity(
+            key="Sichuan", names=["language", "city"], values=["Mandarin", "Chengdu"]
+        )
         self.assertEqual(self.test_dict["Guangdong"], "")
-        self.assertEqual(self.test_dict.get_entity("Guangdong"), [("city", "Shenzhen"), ("language", "Cantonese"), ("population", 1.27)])
+        self.assertEqual(
+            self.test_dict.get_entity("Guangdong"),
+            [("city", "Shenzhen"), ("language", "Cantonese"), ("population", 1.27)],
+        )
         self.assertEqual(self.test_dict["Sichuan"], "")
-        self.assertEqual(self.test_dict.get_entity("Sichuan"), [("city", "Chengdu"), ("language", "Mandarin")])
+        self.assertEqual(
+            self.test_dict.get_entity("Sichuan"),
+            [("city", "Chengdu"), ("language", "Mandarin")],
+        )
         # overwrite
-        self.test_dict.put_entity(key="Sichuan", names=["language", "city"], values=["Sichuanhua", "Chengdu"])
+        self.test_dict.put_entity(
+            key="Sichuan", names=["language", "city"], values=["Sichuanhua", "Chengdu"]
+        )
         self.test_dict["Beijing"] = "Beijing"
 
         # assertions
         self.assertEqual(self.test_dict["Beijing"], "Beijing")
         self.assertEqual(self.test_dict.get_entity("Beijing"), [("", "Beijing")])
         self.assertEqual(self.test_dict["Guangdong"], "")
-        self.assertEqual(self.test_dict.get_entity("Guangdong"), [("city", "Shenzhen"), ("language", "Cantonese"), ("population", 1.27)])
+        self.assertEqual(
+            self.test_dict.get_entity("Guangdong"),
+            [("city", "Shenzhen"), ("language", "Cantonese"), ("population", 1.27)],
+        )
         self.assertEqual(self.test_dict["Sichuan"], "")
-        self.assertEqual(self.test_dict.get_entity("Sichuan"), [("city", "Chengdu"), ("language", "Sichuanhua")])
+        self.assertEqual(
+            self.test_dict.get_entity("Sichuan"),
+            [("city", "Chengdu"), ("language", "Sichuanhua")],
+        )
 
         it = self.test_dict.iter()
         it.seek_to_first()
@@ -752,17 +858,25 @@ class TestWideColumns(unittest.TestCase):
         self.assertTrue(it.valid())
         self.assertEqual(it.key(), "Guangdong")
         self.assertEqual(it.value(), "")
-        self.assertEqual(it.columns(), [("city", "Shenzhen"), ("language", "Cantonese"), ("population", 1.27)])
+        self.assertEqual(
+            it.columns(),
+            [("city", "Shenzhen"), ("language", "Cantonese"), ("population", 1.27)],
+        )
         it.next()
         self.assertTrue(it.valid())
         self.assertEqual(it.key(), "Sichuan")
         self.assertEqual(it.value(), "")
-        self.assertEqual(it.columns(), [("city", "Chengdu"), ("language", "Sichuanhua")])
+        self.assertEqual(
+            it.columns(), [("city", "Chengdu"), ("language", "Sichuanhua")]
+        )
 
         # iterators
         expected = [
             ("Beijing", [("", "Beijing")]),
-            ("Guangdong", [("city", "Shenzhen"), ("language", "Cantonese"), ("population", 1.27)]),
+            (
+                "Guangdong",
+                [("city", "Shenzhen"), ("language", "Cantonese"), ("population", 1.27)],
+            ),
             ("Sichuan", [("city", "Chengdu"), ("language", "Sichuanhua")]),
         ]
         for i, (key, entity) in enumerate(self.test_dict.entities()):
@@ -775,7 +889,7 @@ class TestWideColumns(unittest.TestCase):
                 [("", "Beijing")],
                 [("city", "Shenzhen"), ("language", "Cantonese"), ("population", 1.27)],
                 [("city", "Chengdu"), ("language", "Sichuanhua")],
-            ]
+            ],
         )
 
     @classmethod
@@ -1111,7 +1225,12 @@ class TestIntWithSecondary(unittest.TestCase):
         assert self.ref_dict is not None
         self.secondary_dict.close()
 
-        self.assertRaises(DbClosedError, lambda: self.secondary_dict.get(1) if self.secondary_dict is not None else None)
+        self.assertRaises(
+            DbClosedError,
+            lambda: self.secondary_dict.get(1)
+            if self.secondary_dict is not None
+            else None,
+        )
 
         gc.collect()
         self.secondary_dict = Rdict(
