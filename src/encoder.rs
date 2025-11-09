@@ -28,7 +28,7 @@ pub(crate) fn encoding_byte(v_type: &ValueTypes) -> u8 {
 #[inline(always)]
 pub(crate) fn encode_key<'a>(key: &'a Bound<PyAny>, raw_mode: bool) -> PyResult<Cow<'a, [u8]>> {
     if raw_mode {
-        return if let Ok(value) = key.downcast::<PyBytes>() {
+        return if let Ok(value) = key.cast::<PyBytes>() {
             Ok(Cow::Borrowed(value.as_bytes()))
         } else {
             Err(PyKeyError::new_err("raw mode only support bytes"))
@@ -66,11 +66,11 @@ pub(crate) fn encode_key<'a>(key: &'a Bound<PyAny>, raw_mode: bool) -> PyResult<
 #[inline(always)]
 pub(crate) fn encode_value<'a>(
     value: &'a Bound<PyAny>,
-    dumps: &PyObject,
+    dumps: &Py<PyAny>,
     raw_mode: bool,
 ) -> PyResult<Cow<'a, [u8]>> {
     if raw_mode {
-        if let Ok(value) = value.downcast::<PyBytes>() {
+        if let Ok(value) = value.cast::<PyBytes>() {
             Ok(Cow::Borrowed(value.as_bytes()))
         } else {
             Err(PyValueError::new_err("raw mode only support bytes"))
@@ -93,7 +93,7 @@ pub(crate) fn encode_value<'a>(
             ValueTypes::Any(value) => {
                 let py = value.py();
                 let pickle_bytes = dumps.call1(py, (value,))?;
-                let bytes: &[u8] = pickle_bytes.downcast_bound::<PyBytes>(py)?.as_bytes();
+                let bytes: &[u8] = pickle_bytes.cast_bound::<PyBytes>(py)?.as_bytes();
                 concat_type_encoding(type_encoding, bytes)
             }
         };
@@ -103,19 +103,19 @@ pub(crate) fn encode_value<'a>(
 
 #[inline(always)]
 fn py_to_value_types<'a, 'b>(value: &'a Bound<'b, PyAny>) -> PyResult<ValueTypes<'a, 'b>> {
-    if let Ok(value) = value.downcast::<PyBool>() {
+    if let Ok(value) = value.cast::<PyBool>() {
         return Ok(ValueTypes::Bool(value.extract()?));
     }
-    if let Ok(value) = value.downcast::<PyBytes>() {
+    if let Ok(value) = value.cast::<PyBytes>() {
         return Ok(ValueTypes::Bytes(value.as_bytes()));
     }
-    if let Ok(value) = value.downcast::<PyString>() {
+    if let Ok(value) = value.cast::<PyString>() {
         return Ok(ValueTypes::String(value.to_str()?));
     }
-    if let Ok(value) = value.downcast::<PyInt>() {
+    if let Ok(value) = value.cast::<PyInt>() {
         return Ok(ValueTypes::Int(value.extract()?));
     }
-    if let Ok(value) = value.downcast::<PyFloat>() {
+    if let Ok(value) = value.cast::<PyFloat>() {
         return Ok(ValueTypes::Float(value.value()));
     }
     Ok(ValueTypes::Any(value))
@@ -126,7 +126,7 @@ fn py_to_value_types<'a, 'b>(value: &'a Bound<'b, PyAny>) -> PyResult<ValueTypes
 pub(crate) fn decode_value<'py>(
     py: Python<'py>,
     bytes: &[u8],
-    loads: &PyObject,
+    loads: &Py<PyAny>,
     raw_mode: bool,
 ) -> PyResult<Bound<'py, PyAny>> {
     // directly return bytes if raw_mode is true

@@ -8,7 +8,8 @@ use libc::{c_char, c_uchar, size_t};
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use pyo3::types::{PyList, PyTuple};
-use rocksdb::{AsColumnFamilyRef, Iterable as _, UnboundColumnFamily};
+use rocksdb::wide_columns::{Iterable as _, WideColumns};
+use rocksdb::{AsColumnFamilyRef, UnboundColumnFamily};
 use std::ptr::null_mut;
 use std::sync::{Arc, Mutex};
 
@@ -26,7 +27,7 @@ pub(crate) struct RdictIter {
     pub(crate) readopts: ReadOpt,
 
     /// use pickle loads to convert bytes to pyobjects
-    pub(crate) loads: PyObject,
+    pub(crate) loads: Py<PyAny>,
 
     pub(crate) raw_mode: bool,
 }
@@ -66,7 +67,7 @@ impl RdictIter {
         db: &DbReferenceHolder,
         cf: &Option<Arc<UnboundColumnFamily>>,
         readopts: ReadOptionsPy,
-        pickle_loads: &PyObject,
+        pickle_loads: &Py<PyAny>,
         raw_mode: bool,
         py: Python,
     ) -> PyResult<Self> {
@@ -313,7 +314,7 @@ impl RdictIter {
     pub fn columns<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         if self.valid() {
             let columns = unsafe {
-                rocksdb::WideColumns::from_c(librocksdb_sys::rocksdb_iter_columns(
+                WideColumns::from_c(librocksdb_sys::rocksdb_iter_columns(
                     *self.inner.lock().unwrap(),
                 ))
             };

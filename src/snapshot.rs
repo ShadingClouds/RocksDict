@@ -40,7 +40,7 @@ use std::sync::Arc;
 pub struct Snapshot {
     pub(crate) inner: *const librocksdb_sys::rocksdb_snapshot_t,
     pub(crate) column_family: Option<Arc<UnboundColumnFamily>>,
-    pub(crate) pickle_loads: PyObject,
+    pub(crate) pickle_loads: Py<PyAny>,
     pub(crate) read_opt: ReadOptions,
     // decrease db Rc last
     pub(crate) db: DbReferenceHolder,

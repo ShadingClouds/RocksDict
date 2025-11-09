@@ -18,7 +18,7 @@ use std::ffi::CString;
 pub struct SstFileWriterPy {
     pub(crate) inner: *mut librocksdb_sys::rocksdb_sstfilewriter_t,
     opts: Options,
-    dumps: PyObject,
+    dumps: Py<PyAny>,
     raw_mode: bool,
 }
 
@@ -69,7 +69,7 @@ impl SstFileWriterPy {
     }
 
     /// set custom dumps function
-    fn set_dumps(&mut self, dumps: PyObject) {
+    fn set_dumps(&mut self, dumps: Py<PyAny>) {
         self.dumps = dumps
     }
 

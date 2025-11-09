@@ -38,7 +38,7 @@ macro_rules! inner_mut {
 pub(crate) struct WriteBatchPy {
     inner: Option<WriteBatch>,
     default_column_family: Option<ColumnFamilyPy>,
-    dumps: PyObject,
+    dumps: Py<PyAny>,
     pub(crate) raw_mode: bool,
 }
 
@@ -65,7 +65,7 @@ impl WriteBatchPy {
     }
 
     /// change to a custom dumps function
-    pub fn set_dumps(&mut self, dumps: PyObject) {
+    pub fn set_dumps(&mut self, dumps: Py<PyAny>) {
         self.dumps = dumps
     }
 

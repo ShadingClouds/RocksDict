@@ -179,13 +179,12 @@ pub(crate) struct FlushOptionsPy {
 #[derive(Clone)]
 pub(crate) struct ReadOptionsPy {
     fill_cache: bool,
-    iterate_upper_bound: PyObject,
-    iterate_lower_bound: PyObject,
+    iterate_upper_bound: Py<PyAny>,
+    iterate_lower_bound: Py<PyAny>,
     prefix_same_as_start: bool,
     total_order_seek: bool,
     max_skippable_internal_keys: u64,
     background_purge_on_iterator_cleanup: bool,
-    ignore_range_deletions: bool,
     verify_checksums: bool,
     readahead_size: usize,
     tailing: bool,
@@ -782,7 +781,7 @@ impl OptionsPy {
     pub fn set_db_paths(&mut self, paths: &Bound<PyList>) -> PyResult<()> {
         let mut db_paths = Vec::with_capacity(paths.len());
         for p in paths.iter() {
-            let path: &Bound<DBPathPy> = p.downcast()?;
+            let path: &Bound<DBPathPy> = p.cast()?;
             db_paths.push(
                 match DBPath::new(&path.borrow().path, path.borrow().target_size) {
                     Ok(p) => p,
@@ -898,7 +897,7 @@ impl OptionsPy {
     pub fn set_compression_per_level(&mut self, level_types: &Bound<PyList>) -> PyResult<()> {
         let mut result = Vec::with_capacity(level_types.len());
         for py_any in level_types.iter() {
-            let level_type: &Bound<DBCompressionTypePy> = py_any.downcast()?;
+            let level_type: &Bound<DBCompressionTypePy> = py_any.cast()?;
             result.push(level_type.borrow().0)
         }
         self.inner_opt.set_compression_per_level(&result);
@@ -1500,19 +1499,6 @@ impl OptionsPy {
     pub fn set_max_bytes_for_level_multiplier_additional(&mut self, level_values: Vec<i32>) {
         self.inner_opt
             .set_max_bytes_for_level_multiplier_additional(&level_values)
-    }
-
-    /// If true, then DB::Open() will not fetch and check sizes of all sst files.
-    /// This may significantly speed up startup if there are many sst files,
-    /// especially when using non-default Env with expensive GetFileSize().
-    /// We'll still check that all required sst files exist.
-    /// If paranoid_checks is false, this option is ignored, and sst files are
-    /// not checked at all.
-    ///
-    /// Default: false
-    pub fn set_skip_checking_sst_file_sizes_on_db_open(&mut self, value: bool) {
-        self.inner_opt
-            .set_skip_checking_sst_file_sizes_on_db_open(value)
     }
 
     /// The total maximum size(bytes) of write buffers to maintain in memory
@@ -2172,7 +2158,6 @@ impl ReadOptionsPy {
             total_order_seek: false,
             max_skippable_internal_keys: 0,
             background_purge_on_iterator_cleanup: false,
-            ignore_range_deletions: false,
             verify_checksums: true,
             readahead_size: 0,
             tailing: false,
@@ -2242,15 +2227,6 @@ impl ReadOptionsPy {
         self.background_purge_on_iterator_cleanup = v
     }
 
-    /// If true, keys deleted using the DeleteRange() API will be visible to
-    /// readers until they are naturally deleted during compaction. This improves
-    /// read performance in DBs with many range deletions.
-    ///
-    /// Default: false
-    pub fn set_ignore_range_deletions(&mut self, v: bool) {
-        self.ignore_range_deletions = v
-    }
-
     /// If true, all data read from underlying storage will be
     /// verified against corresponding checksums.
     ///
@@ -2317,7 +2293,6 @@ impl ReadOptionsPy {
         opt.set_total_order_seek(self.total_order_seek);
         opt.set_max_skippable_internal_keys(self.max_skippable_internal_keys);
         opt.set_background_purge_on_iterator_cleanup(self.background_purge_on_iterator_cleanup);
-        opt.set_ignore_range_deletions(self.ignore_range_deletions);
         opt.set_verify_checksums(self.verify_checksums);
         opt.set_readahead_size(self.readahead_size);
         opt.set_tailing(self.tailing);
@@ -2367,10 +2342,6 @@ impl ReadOptionsPy {
             librocksdb_sys::rocksdb_readoptions_set_background_purge_on_iterator_cleanup(
                 opt.0,
                 self.background_purge_on_iterator_cleanup as c_uchar,
-            );
-            librocksdb_sys::rocksdb_readoptions_set_ignore_range_deletions(
-                opt.0,
-                self.ignore_range_deletions as c_uchar,
             );
             librocksdb_sys::rocksdb_readoptions_set_verify_checksums(
                 opt.0,

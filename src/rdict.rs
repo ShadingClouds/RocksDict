@@ -11,7 +11,7 @@ use pyo3::exceptions::{PyException, PyKeyError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
 use rocksdb::{
-    ColumnFamilyDescriptor, FlushOptions, Iterable as _, LiveFile, ReadOptions,
+    wide_columns::Iterable as _, ColumnFamilyDescriptor, FlushOptions, LiveFile, ReadOptions,
     UnboundColumnFamily, WriteOptions, DEFAULT_COLUMN_FAMILY_NAME,
 };
 use serde::{Deserialize, Serialize};
@@ -70,8 +70,8 @@ pub(crate) struct Rdict {
     pub(crate) write_opt: WriteOptions,
     pub(crate) flush_opt: FlushOptionsPy,
     pub(crate) read_opt: ReadOptions,
-    pub(crate) loads: PyObject,
-    pub(crate) dumps: PyObject,
+    pub(crate) loads: Py<PyAny>,
+    pub(crate) dumps: Py<PyAny>,
     pub(crate) write_opt_py: WriteOptionsPy,
     pub(crate) read_opt_py: ReadOptionsPy,
     pub(crate) column_family: Option<Arc<UnboundColumnFamily>>,
@@ -300,12 +300,12 @@ impl Rdict {
     }
 
     /// set custom dumps function
-    fn set_dumps(&mut self, dumps: PyObject) {
+    fn set_dumps(&mut self, dumps: Py<PyAny>) {
         self.dumps = dumps
     }
 
     /// set custom loads function
-    fn set_loads(&mut self, loads: PyObject) {
+    fn set_loads(&mut self, loads: Py<PyAny>) {
         self.loads = loads
     }
 
@@ -394,7 +394,7 @@ impl Rdict {
             }
             Some(cf) => cf.clone(),
         };
-        if let Ok(keys) = key.downcast() {
+        if let Ok(keys) = key.cast() {
             return Ok(self.get_batch_inner(db, keys, default, py, &cf)?.into_any());
         }
         let key_bytes = encode_key(key, self.opt_py.raw_mode)?;
@@ -893,7 +893,7 @@ impl Rdict {
     fn flush(&self, wait: bool, py: Python) -> PyResult<()> {
         let db = self.get_db()?;
 
-        py.allow_threads(|| {
+        py.detach(|| {
             let mut f_opt = FlushOptions::new();
             f_opt.set_wait(wait);
             if let Some(cf) = &self.column_family {
@@ -910,7 +910,7 @@ impl Rdict {
     #[pyo3(signature = (sync = true))]
     fn flush_wal(&self, sync: bool, py: Python) -> PyResult<()> {
         let db = self.get_db()?;
-        py.allow_threads(|| db.flush_wal(sync))
+        py.detach(|| db.flush_wal(sync))
             .map_err(|e| PyException::new_err(e.into_string()))
     }
 
@@ -1053,7 +1053,7 @@ impl Rdict {
     ///     opts: IngestExternalFileOptionsPy instance
     #[pyo3(signature = (
         paths,
-        opts = Python::with_gil(|py| Py::new(py, IngestExternalFileOptionsPy::new()).unwrap())
+        opts = Python::attach(|py| Py::new(py, IngestExternalFileOptionsPy::new()).unwrap())
     ))]
     fn ingest_external_file(
         &self,
@@ -1170,14 +1170,14 @@ impl Rdict {
         if let AccessTypeInner::ReadOnly { .. } | AccessTypeInner::Secondary { .. } =
             &self.access_type.0
         {
-            py.allow_threads(|| {
+            py.detach(|| {
                 drop(self.column_family.take());
                 self.db.close();
             });
             return Ok(());
         }
 
-        let (flush_wal_result, flush_result) = py.allow_threads(|| {
+        let (flush_wal_result, flush_result) = py.detach(|| {
             let f_opt = &self.flush_opt;
             let db = self.get_db()?;
 
@@ -1211,7 +1211,7 @@ impl Rdict {
     }
 
     /// Runs a manual compaction on the Range of keys given for the current Column Family.
-    #[pyo3(signature = (begin, end, compact_opt = Python::with_gil(|py| Py::new(py, CompactOptionsPy::default()).unwrap())))]
+    #[pyo3(signature = (begin, end, compact_opt = Python::attach(|py| Py::new(py, CompactOptionsPy::default()).unwrap())))]
     fn compact_range(
         &self,
         begin: &Bound<PyAny>,
@@ -1232,7 +1232,7 @@ impl Rdict {
         } else {
             Some(encode_key(end, self.opt_py.raw_mode)?)
         };
-        py.allow_threads(|| {
+        py.detach(|| {
             if let Some(cf) = &self.column_family {
                 db.compact_range_cf_opt(cf, from, to, &opt_ref.0)
             } else {
@@ -1315,7 +1315,7 @@ impl Rdict {
     fn destroy(path: &str, options: OptionsPy, py: Python) -> PyResult<()> {
         let inner_opt = options.inner_opt;
 
-        py.allow_threads(|| {
+        py.detach(|| {
             fs::remove_file(config_file(path)).ok();
             DB::destroy(&inner_opt, path)
         })
@@ -1332,7 +1332,7 @@ impl Rdict {
     fn repair(path: &str, options: OptionsPy, py: Python) -> PyResult<()> {
         let inner_opt = options.inner_opt;
 
-        py.allow_threads(|| DB::repair(&inner_opt, path))
+        py.detach(|| DB::repair(&inner_opt, path))
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 
@@ -1346,7 +1346,7 @@ impl Rdict {
 fn display_live_file_dict<'py>(
     lf: LiveFile,
     py: Python<'py>,
-    pickle_loads: &PyObject,
+    pickle_loads: &Py<PyAny>,
     raw_mode: bool,
 ) -> PyResult<Bound<'py, PyAny>> {
     let result = PyDict::new(py);
@@ -1382,8 +1382,7 @@ impl Rdict {
         for key in keys_py.iter() {
             keys.push(encode_key(key, self.opt_py.raw_mode)?);
         }
-        let values =
-            py.allow_threads(|| db.batched_multi_get_cf_opt(cf, &keys, false, &self.read_opt));
+        let values = py.detach(|| db.batched_multi_get_cf_opt(cf, &keys, false, &self.read_opt));
         let result = PyList::empty(py);
         for v in values {
             match v {
