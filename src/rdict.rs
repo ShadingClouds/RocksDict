@@ -11,7 +11,7 @@ use pyo3::exceptions::{PyException, PyKeyError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
 use rocksdb::{
-    ColumnFamilyDescriptor, FlushOptions, Iterable as _, LiveFile, ReadOptions,
+    wide_columns::Iterable as _, ColumnFamilyDescriptor, FlushOptions, LiveFile, ReadOptions,
     UnboundColumnFamily, WriteOptions, DEFAULT_COLUMN_FAMILY_NAME,
 };
 use serde::{Deserialize, Serialize};
@@ -394,7 +394,7 @@ impl Rdict {
             }
             Some(cf) => cf.clone(),
         };
-        if let Ok(keys) = key.downcast() {
+        if let Ok(keys) = key.cast() {
             return Ok(self.get_batch_inner(db, keys, default, py, &cf)?.into_any());
         }
         let key_bytes = encode_key(key, self.opt_py.raw_mode)?;

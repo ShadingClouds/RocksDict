@@ -782,7 +782,7 @@ impl OptionsPy {
     pub fn set_db_paths(&mut self, paths: &Bound<PyList>) -> PyResult<()> {
         let mut db_paths = Vec::with_capacity(paths.len());
         for p in paths.iter() {
-            let path: &Bound<DBPathPy> = p.downcast()?;
+            let path: &Bound<DBPathPy> = p.cast()?;
             db_paths.push(
                 match DBPath::new(&path.borrow().path, path.borrow().target_size) {
                     Ok(p) => p,
@@ -898,7 +898,7 @@ impl OptionsPy {
     pub fn set_compression_per_level(&mut self, level_types: &Bound<PyList>) -> PyResult<()> {
         let mut result = Vec::with_capacity(level_types.len());
         for py_any in level_types.iter() {
-            let level_type: &Bound<DBCompressionTypePy> = py_any.downcast()?;
+            let level_type: &Bound<DBCompressionTypePy> = py_any.cast()?;
             result.push(level_type.borrow().0)
         }
         self.inner_opt.set_compression_per_level(&result);

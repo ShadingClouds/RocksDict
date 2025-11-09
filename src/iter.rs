@@ -8,7 +8,8 @@ use libc::{c_char, c_uchar, size_t};
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use pyo3::types::{PyList, PyTuple};
-use rocksdb::{AsColumnFamilyRef, Iterable as _, UnboundColumnFamily};
+use rocksdb::wide_columns::{Iterable as _, WideColumns};
+use rocksdb::{AsColumnFamilyRef, UnboundColumnFamily};
 use std::ptr::null_mut;
 use std::sync::{Arc, Mutex};
 
@@ -313,7 +314,7 @@ impl RdictIter {
     pub fn columns<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         if self.valid() {
             let columns = unsafe {
-                rocksdb::WideColumns::from_c(librocksdb_sys::rocksdb_iter_columns(
+                WideColumns::from_c(librocksdb_sys::rocksdb_iter_columns(
                     *self.inner.lock().unwrap(),
                 ))
             };
