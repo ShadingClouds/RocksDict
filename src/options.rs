@@ -179,8 +179,8 @@ pub(crate) struct FlushOptionsPy {
 #[derive(Clone)]
 pub(crate) struct ReadOptionsPy {
     fill_cache: bool,
-    iterate_upper_bound: PyObject,
-    iterate_lower_bound: PyObject,
+    iterate_upper_bound: Py<PyAny>,
+    iterate_lower_bound: Py<PyAny>,
     prefix_same_as_start: bool,
     total_order_seek: bool,
     max_skippable_internal_keys: u64,

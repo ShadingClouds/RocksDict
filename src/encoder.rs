@@ -66,7 +66,7 @@ pub(crate) fn encode_key<'a>(key: &'a Bound<PyAny>, raw_mode: bool) -> PyResult<
 #[inline(always)]
 pub(crate) fn encode_value<'a>(
     value: &'a Bound<PyAny>,
-    dumps: &PyObject,
+    dumps: &Py<PyAny>,
     raw_mode: bool,
 ) -> PyResult<Cow<'a, [u8]>> {
     if raw_mode {
@@ -126,7 +126,7 @@ fn py_to_value_types<'a, 'b>(value: &'a Bound<'b, PyAny>) -> PyResult<ValueTypes
 pub(crate) fn decode_value<'py>(
     py: Python<'py>,
     bytes: &[u8],
-    loads: &PyObject,
+    loads: &Py<PyAny>,
     raw_mode: bool,
 ) -> PyResult<Bound<'py, PyAny>> {
     // directly return bytes if raw_mode is true

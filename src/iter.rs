@@ -26,7 +26,7 @@ pub(crate) struct RdictIter {
     pub(crate) readopts: ReadOpt,
 
     /// use pickle loads to convert bytes to pyobjects
-    pub(crate) loads: PyObject,
+    pub(crate) loads: Py<PyAny>,
 
     pub(crate) raw_mode: bool,
 }
@@ -66,7 +66,7 @@ impl RdictIter {
         db: &DbReferenceHolder,
         cf: &Option<Arc<UnboundColumnFamily>>,
         readopts: ReadOptionsPy,
-        pickle_loads: &PyObject,
+        pickle_loads: &Py<PyAny>,
         raw_mode: bool,
         py: Python,
     ) -> PyResult<Self> {
