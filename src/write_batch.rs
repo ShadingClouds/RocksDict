@@ -141,7 +141,10 @@ impl WriteBatchPy {
         let inner = inner_mut!(self)?;
         let key = encode_key(key, self.raw_mode)?;
         let value = encode_value(value, &self.dumps, self.raw_mode)?;
-        match column_family {
+        match column_family
+            .as_ref()
+            .or(self.default_column_family.as_ref())
+        {
             Some(cf) => inner.put_cf(&cf.cf, key, value),
             None => inner.put(key, value),
         }
@@ -203,7 +206,10 @@ impl WriteBatchPy {
     ) -> PyResult<()> {
         let inner = inner_mut!(self)?;
         let key = encode_key(key, self.raw_mode)?;
-        match column_family {
+        match column_family
+            .as_ref()
+            .or(self.default_column_family.as_ref())
+        {
             Some(cf) => inner.delete_cf(&cf.cf, key),
             None => inner.delete(key),
         }
