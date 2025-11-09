@@ -68,6 +68,12 @@ class TestGetDel(unittest.TestCase):
             lambda: self.test_dict[250] if self.test_dict is not None else None,
         )
 
+    def testGetNoneValue(self):
+        assert self.test_dict is not None
+        self.test_dict["none"] = None
+        self.assertIsNone(self.test_dict["none"])
+        self.assertIsNone(self.test_dict.get("none"))
+
     def testDelItem(self):
         assert self.test_dict is not None
         # no exception raise when deleting non-existing key

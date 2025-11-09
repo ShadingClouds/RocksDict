@@ -348,13 +348,8 @@ impl Rdict {
     /// Use list of keys for batch get.
     fn __getitem__<'py>(&self, key: &Bound<PyAny>, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         match self.get(key, None, None, py) {
-            Ok(v) => {
-                if v.is_none() {
-                    Err(PyKeyError::new_err(format!("key {key} not found")))
-                } else {
-                    Ok(v)
-                }
-            }
+            Ok(None) => Err(PyKeyError::new_err(format!("key {key} not found"))),
+            Ok(Some(v)) => Ok(v),
             Err(e) => Err(e),
         }
     }
@@ -377,7 +372,7 @@ impl Rdict {
         default: Option<Bound<'py, PyAny>>,
         read_opt: Option<&ReadOptionsPy>,
         py: Python<'py>,
-    ) -> PyResult<Bound<'py, PyAny>> {
+    ) -> PyResult<Option<Bound<'py, PyAny>>> {
         let db = self.get_db()?;
         let read_opt_option = match read_opt {
             None => None,
@@ -395,7 +390,9 @@ impl Rdict {
             Some(cf) => cf.clone(),
         };
         if let Ok(keys) = key.cast() {
-            return Ok(self.get_batch_inner(db, keys, default, py, &cf)?.into_any());
+            return Ok(Some(
+                self.get_batch_inner(db, keys, default, py, &cf)?.into_any(),
+            ));
         }
         let key_bytes = encode_key(key, self.opt_py.raw_mode)?;
         let value_result = db
@@ -405,17 +402,17 @@ impl Rdict {
             None => {
                 // try to return default value
                 if let Some(default) = default {
-                    Ok(default)
+                    Ok(Some(default))
                 } else {
-                    Ok(py.None().bind(py).to_owned())
+                    Ok(None)
                 }
             }
-            Some(slice) => Ok(decode_value(
+            Some(slice) => Ok(Some(decode_value(
                 py,
                 slice.as_ref(),
                 &self.loads,
                 self.opt_py.raw_mode,
-            )?),
+            )?)),
         }
     }
 
