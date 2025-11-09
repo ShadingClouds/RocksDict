@@ -150,7 +150,7 @@ jobs:
           python-version: ${{ matrix.py_version }}
           architecture: ${{ matrix.target }}
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v2.0.7
+        uses: KyleMayes/install-llvm-action@v2.0.8
         with:
           version: 21.1.3
           directory: ${{ runner.temp }}/llvm-21.1.3
