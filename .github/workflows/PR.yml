@@ -16,10 +16,10 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-      - name: Install llvm-20
+      - name: Install llvm-21
         run: |
           brew update
-          brew install llvm@20
+          brew install llvm@21
           brew install lld
       - uses: actions/setup-python@v5
         with:
@@ -28,18 +28,19 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.90.0
+          toolchain: 1.91.1
           default: true
       - name: Build wheels
         run: |
           rustup target add x86_64-apple-darwin
           pip install maturin
           eval "$(brew shellenv)"
+          sed -i.bak 's/^#  define _LIBCPP_INTRODUCED_IN_LLVM_21 1$/#  define _LIBCPP_INTRODUCED_IN_LLVM_21 0/' ${HOMEBREW_PREFIX}/opt/llvm@21/include/c++/v1/__configuration/availability.h
           export MACOSX_DEPLOYMENT_TARGET=10.14
-          export LIBCLANG_PATH=${HOMEBREW_PREFIX}/opt/llvm@20/lib
-          export CC=${HOMEBREW_PREFIX}/opt/llvm@20/bin/clang
-          export CXX=${HOMEBREW_PREFIX}/opt/llvm@20/bin/clang++
-          export AR=${HOMEBREW_PREFIX}/opt/llvm@20/bin/llvm-ar
+          export LIBCLANG_PATH=${HOMEBREW_PREFIX}/opt/llvm@21/lib
+          export CC=${HOMEBREW_PREFIX}/opt/llvm@21/bin/clang
+          export CXX=${HOMEBREW_PREFIX}/opt/llvm@21/bin/clang++
+          export AR=${HOMEBREW_PREFIX}/opt/llvm@21/bin/llvm-ar
           export CFLAGS="-flto=thin -O3 -isysroot/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
           export CXXFLAGS="-flto=thin -O3 -isysroot/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
           export LLD=${HOMEBREW_PREFIX}/opt/lld/bin/ld64.lld
@@ -83,7 +84,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.91.0
+          toolchain: 1.91.1
           default: true
       - name: Build wheels
         uses: messense/maturin-action@v1
@@ -126,7 +127,7 @@ jobs:
       - name: Build Wheels
         uses: messense/maturin-action@v1
         with:
-          rust-toolchain: 1.91.0
+          rust-toolchain: 1.91.1
           rustup-components: rustfmt
           target: ${{ matrix.target }}
           manylinux: 2_28
@@ -169,7 +170,7 @@ jobs:
       - name: Build Wheels
         uses: messense/maturin-action@v1
         with:
-          rust-toolchain: 1.91.0
+          rust-toolchain: 1.91.1
           rustup-components: rustfmt
           target: ${{ matrix.target }}
           manylinux: 2014
@@ -211,7 +212,7 @@ jobs:
       - name: Build Wheels
         uses: messense/maturin-action@v1
         with:
-          rust-toolchain: 1.91.0
+          rust-toolchain: 1.91.1
           rustup-components: rustfmt
           target: ${{ matrix.target }}
           manylinux: 2_28
@@ -253,7 +254,7 @@ jobs:
       - name: Build Wheels
         uses: messense/maturin-action@v1
         with:
-          rust-toolchain: 1.91.0
+          rust-toolchain: 1.91.1
           rustup-components: rustfmt
           target: ${{ matrix.target }}
           manylinux: 2014
@@ -291,7 +292,7 @@ jobs:
       - name: Build Wheels
         uses: messense/maturin-action@v1
         with:
-          rust-toolchain: 1.91.0
+          rust-toolchain: 1.91.1
           rustup-components: rustfmt
           target: ${{ matrix.target }}
           manylinux: musllinux_1_2
@@ -339,7 +340,7 @@ jobs:
       - name: Build Wheels
         uses: messense/maturin-action@v1
         with:
-          rust-toolchain: 1.91.0
+          rust-toolchain: 1.91.1
           rustup-components: rustfmt
           target: ${{ matrix.target }}
           manylinux: musllinux_1_2
